@@ -241,8 +241,7 @@ var width = $("#map").width(),
 
 	});
 
-	//d3.csv("https://raw.githubusercontent.com/NYCDOB/ActiveAHVs/gh-pages/data/activeAHVs.csv",function(data){
-	d3.csv("data/LL104_properties.csv",function(data){
+	d3.csv("https://raw.githubusercontent.com/NYCDOB/LL104/gh-pages/data/LL104_properties.csv",function(data){
 				points = data.map(function(d){
 				d.latLng = [+d.LATITUDE_POINT_Y,+d.LONGITUDE_POINT_X];
 				d.bin = [d.Bin];				
@@ -312,8 +311,7 @@ var width = $("#map").width(),
 		var table = $('#riskTable').DataTable({
 
 				"ajax": {
-					//"url": "https://raw.githubusercontent.com/NYCDOB/ActiveAHVs/gh-pages/data/activeAHVsJson.json",
-					"url": "data/LL104_properties.json",
+					"url": "https://raw.githubusercontent.com/NYCDOB/LL104/gh-pages/data/LL104_properties.json",
 					"dataSrc": ""
 				},
 
