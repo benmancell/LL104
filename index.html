@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Local Law 104</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+  <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+  <link href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css' rel='stylesheet' type='text/css'/>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.10.12/r-2.1.0/se-1.2.0/datatables.min.css">
+
+</head>
+<style>
+
+.heading {
+	font-size: 26px;
+	font-weight: bold;
+	color: #ffffff;	
+	font-family: 'Open Sans', sans-serif;
+	font-family: 'Roboto', sans-serif;
+	padding-left: 20px;
+	padding-top: 8px;
+}
+.row{
+	padding-top: 50px;
+}
+.navbar-brand-subheading {
+	font-size: 20px;
+	font-weight: bold;
+	font-style: italic;
+	color: #002878;
+	font-family: 'Open Sans', sans-serif;
+	font-family: 'Roboto', sans-serif;	
+}
+.navbar-inverse{
+	background-color: #113c5c !important;
+	border-color: #113c5c !important;
+}
+body {
+	background-color: white;
+	padding-bottom:0px !important;
+	padding-top:0px !important;
+}
+
+#chart-01{
+    box-sizing: border-box;
+    width: 100%;
+	height: 100%;
+    float: left;
+	padding: 5px;
+}
+div.tooltip {
+	color: #222;
+	background: #fff;
+	padding: .5em;
+	text-shadow: #f5f5f5 0 1px 0;
+	border-radius: 7px; 
+	box-shadow: 0px 0px 2px 0px #a6a6a6; 
+	opacity: 0.9; 
+	position: absolute;
+	visibility: hidden;
+}
+
+#map-container{
+	height: 890px;
+	width: 1410px;
+	border: 2px solid #3d4a57;
+	position: relative;
+	display: block;
+}
+#map {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	background-color: #333;
+	pointer-events: all;
+	display: block;
+}
+#table-container{
+	height: 890px;
+	width: 100%;
+	border: 2px solid #3d4a57;
+	display: block;
+	background-color: white;
+}
+
+#img{
+	float: left;
+	height: 35px;
+	margin-left: 10px;
+	padding-right: 10px;
+}
+.point{
+	fill: #ED3200;
+	fill-opacity: .7;
+}
+#riskTable{
+	height: 100%;
+	font-size: 12px;
+}
+td.details-control {
+	background: url('https://datatables.net/examples/resources/details_open.png') no-repeat center center;
+	cursor: pointer;
+}
+tr.shown td.details-control {
+	background: url('https://datatables.net/examples/resources/details_close.png') no-repeat center center;
+	cursor: pointer;
+}
+.logo{
+	background-image: url('data/dob_logo.png');
+	background-repeat: no-repeat;
+	background-position: center;
+	float: right;
+	background-size: 70px;
+	height: 50px;
+	width: 110px;	 
+}
+
+
+</style>
+<body class="application">
+<div class="container-fluid" style="margin-top:10px;margin-bottom:0">
+	<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+	<a class="logo" href="https://www1.nyc.gov/site/buildings/index.page" target="_blank"> </a>
+	  <div class="heading">
+			LOCAL LAW 104 PROPERTIES (AS OF <span id="today"></span>)		
+	  </div>
+	</div>
+	<div class="row">
+		  <div class="col-md-9">
+			  <div class="chart-stage" id="map-container">
+				<div id="map"></div>
+			  </div>
+		  </div>
+
+			  <div class="col-md-3">
+				<div class="chart-wrapper" id="table-container">
+				  <div class="chart-stage" id="chart-01">
+					<table id="riskTable" class="display" style="width:100%">
+						<thead>
+							<tr>
+								<th></th>
+								<!-- <th>ADDRESS</th> -->
+								<th>HOUSE NUMBER</th>
+								<th>STREET</th>
+								<th>BOROUGH</th>
+							</tr>
+						</thead>			
+					</table>
+
+				  </div>
+				</div>
+			  </div>
+	</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js"></script>
+<script src="Leaflet.D3SvgOverlay-master/L.D3SvgOverlay.min.js"></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/v/dt/dt-1.10.12/r-2.1.0/se-1.2.0/datatables.min.js"></script>
+
+<script>
+$(document).ready(function(){
+	var today = new Date();
+	var dd = today.getDate();
+	var mm = today.getMonth()+1;
+	var yyyy = today.getFullYear();
+	today = mm + '/' + dd + '/' + yyyy;	
+	d3.select("#today").html(today);
+	var latlong = [];
+	var selection = [];
+	var formatDate = d3.time.format("%-m/%-d/%Y").parse;
+var map = L.map('map').setView([40.713312, -73.977407], 12);
+
+L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png', {attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+
+var tooltip = d3.select('body').append('div')
+	.on('mouseover', function(d, i){
+		tooltip.transition().duration(0);
+	})
+	.on('mouseout', function(d, i){
+		tooltip.transition().delay(500).style('visibility', 'hidden');
+	})
+	.attr('class', 'tooltip');
+	
+var width = $("#map").width(),
+	height = $("#map").height(),
+	points = [],
+	table_map = [],
+	filteredData;	
+	var latLngs = [];
+	
+	var pointsOverlay = L.d3SvgOverlay(function(sel,proj){
+	var pointsUpd = sel.selectAll('circle').data(points);	
+	pointsUpd.enter()
+		.append('circle')
+		.attr('cx',function(d){return proj.latLngToLayerPoint(d.latLng).x;})
+		.attr('cy',function(d){return proj.latLngToLayerPoint(d.latLng).y;})
+		.attr('class', function(d){
+			return "point";
+		})
+
+		.on('click', function(d){
+			if(d3.select(this).style("fill-opacity") != 0){
+				tooltip.style("visibility", "visible");
+				tooltip.html(
+					'BIN: ' + [d.Bin] + '</br>' +								
+					'ADDRESS: '+ d["House Number"] + ' ' + d["Street Name"] + ', ' + d["Borough Name"].toUpperCase() + '</br>' +
+					'COMMUNITY DISTRICT: ' + d["Community Board"] + '</br>' +
+					'ZIP CODE: '+ [d.Zip] + '</br>' +
+					'BLOCK: ' + [d.Block] + '</br>' +
+					'LOT: ' + [d.Lot]
+				)
+				if (d3.event.pageX > (width - 200)) {
+				   tooltip.style("left", (d3.event.pageX - 350) + "px");
+				} else {
+				   tooltip.style("left", (d3.event.pageX + 20) + "px")
+						.style("top", (d3.event.pageY -30) + "px");
+				}
+				if (d3.event.pageY > (height - 150)) {
+				   tooltip.style("top", (d3.event.pageY -100) + "px");
+				} else {
+				   tooltip.style("top", (d3.event.pageY -30) + "px");
+				}
+			}
+		})
+		.on("mouseover", function(d, i){
+			if(d3.select(this).style("fill-opacity") != 0){
+				tooltip.transition().duration(0); 
+				$(this).attr("style", "cursor: pointer; fill: #eef442; fill-opacity: 1;");
+			}
+		})
+		.on("mouseout", function(d, i){	
+			if(d3.select(this).style("fill-opacity") != 0){
+				$(this).attr("style", "stroke-width: 0px; fill-opacity: .7;");
+				return tooltip.transition().delay(500).style("visibility", "hidden"); 
+			}
+		});
+		pointsUpd.attr('r', 4 / proj.scale);
+
+	});
+
+	//d3.csv("https://raw.githubusercontent.com/NYCDOB/ActiveAHVs/gh-pages/data/activeAHVs.csv",function(data){
+	d3.csv("data/LL104_properties.csv",function(data){
+				points = data.map(function(d){
+				d.latLng = [+d.LATITUDE_POINT_Y,+d.LONGITUDE_POINT_X];
+				d.bin = [d.Bin];				
+				d.HouseNum = d["House Number"];
+				d.Street = d["Street Name"];
+				d.CD = d["Community Board"];
+				d.Borough = d["Borough Name"].toUpperCase();
+				d.zip = [d.Zip];
+				d.block = [d.Block];
+				d.lot = [d.Lot];
+			return d;
+			});
+		pointsOverlay.addTo(map);
+	});
+
+	function highlightPoint(layerID){
+		console.log(layerID);
+		d3.selectAll(".point")
+			.style("fill-opacity", function(d){
+				if(d.Bin == layerID){return "0.7"}
+				else{return "0"};
+			})
+	}
+	
+	function zoomToSelected(latlong){
+			map.setView(latlong,15);
+	}	
+	
+	function zoomFullExtent(){
+		map.setView([40.713312, -73.977407], 11);
+	}
+	
+	map.on('resize', function(){
+		map.invalidateSize();		
+	});
+
+	function format ( d ) {
+		return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">'+
+			'<tr>'+
+				'<td>BIN:</td>'+
+				'<td>'+[d.Bin]+'</td>'+
+			'</tr>'+
+			'<tr>'+
+				'<td>Community District:</td>'+
+				'<td>'+d["Community Board"]+'</td>'+
+			'</tr>'+
+			'<tr>'+
+				'<td>Zip Code:</td>'+
+				'<td>'+[d.Zip]+'</td>'+
+			'</tr>'+
+			'<tr>'+
+				'<td>Block:</td>'+
+				'<td>'+[d.Block]+'</td>'+
+			'</tr>'+
+			'<tr>'+
+				'<td>Lot:</td>'+
+				'<td>'+[d.Lot]+'</td>'+
+			'</tr>'+
+			
+		'</table>';
+	}	
+	function zoom(lat,lon){
+		map.panTo(new L.LatLng(lat,lon));
+	}
+	
+	$(function(){
+		var table = $('#riskTable').DataTable({
+
+				"ajax": {
+					//"url": "https://raw.githubusercontent.com/NYCDOB/ActiveAHVs/gh-pages/data/activeAHVsJson.json",
+					"url": "data/LL104_properties.json",
+					"dataSrc": ""
+				},
+
+				order: [[3, "asc"], [1, "asc"], [2, "asc"]],
+				lengthChange: false,
+				"scrollY": "765px",
+				"scrollCollapse": true,
+				"paging": false,
+
+				columns: [
+					{
+						"className": 'details-control',
+						"orderable": false,
+						"data": null,
+						"defaultContent": ''
+					},
+					{	data: "House Number"
+					},
+					{	data: "Street Name"
+					},
+					{ 	data: "Borough Name"
+					}
+				]
+
+				
+			});
+		
+		$('#riskTable tbody').on( 'click', 'tr', function () {
+			if ( $(this).hasClass('selected') ) {
+				$(this).removeClass('selected');			
+			d3.selectAll('.point')
+				.style("fill-opacity", function(d){
+					return "0.7";
+				});	
+			zoomFullExtent();
+			}
+			else {
+				table.$('tr.selected').removeClass('selected');
+				$(this).addClass('selected');
+				
+			for (var i=0; i < table.rows('.selected').data().length; i++){
+				<!-- var selectedRecord = table.rows('.selected').data()[i].Address; -->
+				var selectedRecord = table.rows('.selected').data()[i].Bin;
+				var lat = table.rows('.selected').data()[i].LATITUDE_POINT_Y;
+				var lon = table.rows('.selected').data()[i].LONGITUDE_POINT_X;
+				latlong = [lat,lon];
+				console.log(selectedRecord);
+				}
+				highlightPoint(selectedRecord);	
+				zoomToSelected(latlong);
+			}
+		});
+
+				
+		// Add event listener for opening and closing details
+		$('#riskTable tbody').on('click', 'td.details-control', function () {
+			var tr = $(this).closest('tr');
+			var row = table.row( tr );
+			if ( row.child.isShown() ) {
+				// This row is already open - close it
+				row.child.hide();
+				tr.removeClass('shown');
+			}
+			else {
+				// Open this row
+				row.child( format(row.data()) ).show();
+				tr.addClass('shown');
+			}
+		});
+	});	
+
+
+
+
+});	
+
+</script>
+</body>
+</html>
